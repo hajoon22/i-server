@@ -9,7 +9,7 @@
 #include "../config.h"
 #include "../utils/utils.h"
 
-int send_icmp_echo(int s, uint32_t dst, uint16_t seq, uint8_t *data, size_t len) {
+int send_icmp_echo(int s, uint32_t dst, uint16_t seq, const uint8_t *data, size_t len) {
     if (s < 0 || (len > 0 && data == NULL)) {
         return -1;
     }
