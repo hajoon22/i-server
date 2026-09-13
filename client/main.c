@@ -1,9 +1,11 @@
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <netinet/ip_icmp.h>
 
 #include "config.h"
 #include "icmp/icmp.h"
@@ -24,10 +26,29 @@ int main(void) {
     pfd.events = POLLIN;
     
     int r = 0;
+    uint8_t buf[1500] = {0}, *data = NULL;
     while (1) {
         r = poll(&pfd, 1, 5000);
         if (r > 0) {
-            
+            ssize_t n = recv(s, buf, sizeof(buf), 0);
+            if (n < 0) break;
+
+            struct iphdr *iph = (struct iphdr *)buf;
+            struct icmphdr *icmph = (struct icmphdr *)(buf+(iph->ihl*4));
+            if (icmph->type == ICMP_ECHOREPLY) {
+                if (ntohs(icmph->un.echo.id) != DEFAULT_ECHO_ID) continue;
+                
+                // soon...
+            } else if (icmph->type == ICMP_DEST_UNREACH) {
+                int len = parse_icmp_unreach(buf, n, &data);
+                if (len < 0) continue;
+                
+                data[len] = '\0';
+                printf("message = %s\r\n", data);
+                
+                free(data);
+                data = NULL;
+            }
         } else if (r < 0) {
             break;
         }
