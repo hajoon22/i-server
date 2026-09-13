@@ -35,20 +35,20 @@ int main(void) {
 
             struct iphdr *iph = (struct iphdr *)buf;
             struct icmphdr *icmph = (struct icmphdr *)(buf+(iph->ihl*4));
+            
+            int len = -1;
             if (icmph->type == ICMP_ECHOREPLY) {
-                if (ntohs(icmph->un.echo.id) != DEFAULT_ECHO_ID) continue;
-                
-                // soon...
+                len = parse_icmp_echo(buf, n, MESSAGE_ECHO_SEQ, &data);
             } else if (icmph->type == ICMP_DEST_UNREACH) {
-                int len = parse_icmp_unreach(buf, n, MESSAGE_ECHO_SEQ, &data);
-                if (len < 0) continue;
-                
-                data[len] = '\0';
-                printf("message = %s\r\n", data);
-                
-                free(data);
-                data = NULL;
+                len = parse_icmp_unreach(buf, n, MESSAGE_ECHO_SEQ, &data);
             }
+            if (len < 0) continue;
+               
+            data[len] = '\0';
+            printf("message = %s\r\n", data);
+            
+            free(data);
+            data = NULL;
         } else if (r < 0) {
             break;
         }
