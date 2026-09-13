@@ -36,6 +36,29 @@ int send_icmp_echo(int s, uint32_t dst, uint16_t seq, uint8_t *data, size_t len)
     return (int)ret;
 }
 
+int parse_icmp_echo(uint8_t *buf, size_t len, uint16_t seq, uint8_t **output) {
+    size_t offset = 0;
+    struct iphdr *iph = (struct iphdr *)buf;
+    offset += iph->ihl*4;
+
+    struct icmphdr *icmph = (struct icmphdr *)(buf+offset);
+    if (ntohs(icmph->un.echo.id) != DEFAULT_ECHO_ID) {
+        return -1;
+    } else if (ntohs(icmph->un.echo.sequence) != seq) {
+        return -1;
+    }
+    offset += sizeof(struct icmphdr);
+
+    size_t data_len = len-offset;
+    if (data_len == 0) return -1;
+
+    *output = calloc(data_len+1, sizeof(uint8_t));
+    if (!*output) return -1;
+
+    memcpy(*output, buf+offset, data_len);
+    return (int)data_len;
+}
+
 int parse_icmp_unreach(uint8_t *buf, size_t len, uint16_t seq, uint8_t **output) {
     size_t offset = 0;
 
@@ -54,24 +77,6 @@ int parse_icmp_unreach(uint8_t *buf, size_t len, uint16_t seq, uint8_t **output)
     }
 
     // inner packet
-    iph = (struct iphdr *)(buf+offset);
-    offset += iph->ihl*4;
-
-    icmph = (struct icmphdr *)(buf+offset);
-    if (ntohs(icmph->un.echo.id) != DEFAULT_ECHO_ID) {
-        return -1;
-    } else if (ntohs(icmph->un.echo.sequence) != seq) {
-        return -1;
-    }
-    offset += sizeof(struct icmphdr);
-
-    size_t data_len = len-offset;
-    if (data_len == 0) return -1;
-
-    *output = calloc(data_len+1, sizeof(uint8_t));
-    if (!*output) return -1;
-
-    memcpy(*output, buf+offset, data_len);
-    return (int)data_len;
+    return parse_icmp_echo(buf+offset, len-offset, seq, output);
 }
 
