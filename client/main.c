@@ -40,7 +40,7 @@ int main(void) {
                 
                 // soon...
             } else if (icmph->type == ICMP_DEST_UNREACH) {
-                int len = parse_icmp_unreach(buf, n, &data);
+                int len = parse_icmp_unreach(buf, n, MESSAGE_ECHO_SEQ, &data);
                 if (len < 0) continue;
                 
                 data[len] = '\0';
