@@ -4,8 +4,11 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <poll.h>
+#include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #include "config.h"
 #include "icmp/icmp.h"
@@ -17,45 +20,55 @@ static void keepalive(int s) {
     }
 }
 
+static int init_keepalive(int s) {
+    int pid = fork();
+    if (pid == 0) {
+        while (1) {
+            keepalive(s);
+            sleep(5);
+        }
+    }
+
+    return pid;
+}
+
 int main(void) {
     int s = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (s < 0) return -1;
 
-    struct pollfd pfd = {0};
-    pfd.fd = s;
-    pfd.events = POLLIN;
+    int pid = init_keepalive(s);
+    if (pid < 0) {
+        close(s);
+        return -1;
+    }
     
-    int r = 0;
     uint8_t buf[1500] = {0}, *data = NULL;
     while (1) {
-        r = poll(&pfd, 1, 5000);
-        if (r > 0) {
-            ssize_t n = recv(s, buf, sizeof(buf), 0);
-            if (n < 0) break;
+        ssize_t n = recv(s, buf, sizeof(buf), 0);
+        if (n < 0) break;
 
-            struct iphdr *iph = (struct iphdr *)buf;
-            struct icmphdr *icmph = (struct icmphdr *)(buf+(iph->ihl*4));
-            
-            int len = -1;
-            if (icmph->type == ICMP_ECHOREPLY) {
-                len = parse_icmp_echo(buf, n, MESSAGE_ECHO_SEQ, &data);
-            } else if (icmph->type == ICMP_DEST_UNREACH) {
-                len = parse_icmp_unreach(buf, n, MESSAGE_ECHO_SEQ, &data);
-            }
-            if (len < 0) continue;
-               
-            data[len] = '\0';
-            printf("message = %s\r\n", data);
-            
-            free(data);
-            data = NULL;
-        } else if (r < 0) {
-            break;
+        struct iphdr *iph = (struct iphdr *)buf;
+        struct icmphdr *icmph = (struct icmphdr *)(buf+(iph->ihl*4));
+        
+        int len = -1;
+        if (icmph->type == ICMP_ECHOREPLY) {
+            len = parse_icmp_echo(buf, n, MESSAGE_ECHO_SEQ, &data);
+        } else if (icmph->type == ICMP_DEST_UNREACH) {
+            len = parse_icmp_unreach(buf, n, MESSAGE_ECHO_SEQ, &data);
         }
-
-        keepalive(s);
+        if (len < 0) continue;
+            
+        data[len] = '\0';
+        printf("message = %s\r\n", data);
+        
+        free(data);
+        data = NULL;
     }
 
+    kill(pid, SIGTERM);
+    waitpid(pid, NULL, 0);
+
     close(s);
+
     return 0;
 }
