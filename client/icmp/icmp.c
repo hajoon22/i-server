@@ -36,7 +36,7 @@ int send_icmp_echo(int s, uint32_t dst, uint16_t seq, uint8_t *data, size_t len)
     return (int)ret;
 }
 
-int parse_icmp_unreach(uint8_t *buf, size_t len, uint8_t **output) {
+int parse_icmp_unreach(uint8_t *buf, size_t len, uint16_t seq, uint8_t **output) {
     size_t offset = 0;
 
     // outer packet
@@ -59,6 +59,8 @@ int parse_icmp_unreach(uint8_t *buf, size_t len, uint8_t **output) {
 
     icmph = (struct icmphdr *)(buf+offset);
     if (ntohs(icmph->un.echo.id) != DEFAULT_ECHO_ID) {
+        return -1;
+    } else if (ntohs(icmph->un.echo.sequence) != seq) {
         return -1;
     }
     offset += sizeof(struct icmphdr);
