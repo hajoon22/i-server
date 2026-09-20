@@ -7,5 +7,5 @@ utils.o: client/utils/utils.c client/utils/utils.h
 icmp.o: client/icmp/icmp.c client/icmp/icmp.h
 	gcc -c client/icmp/icmp.c -o icmp.o
 
-server: main.go
-	go build -o server server/main.go
+serv:
+	cd server;go build -o ../serv .
