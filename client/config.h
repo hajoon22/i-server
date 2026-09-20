@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <stdint.h>
+
 #define DEFAULT_ECHO_ID 2222
 
 #define MESSAGE_ECHO_SEQ 1111
