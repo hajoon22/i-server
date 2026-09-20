@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+// vulnerable to cve-2020-10136 could potentially be used as relay!
 type Config struct {
 	Servers    []string `json:"servers"`
 	ServerAddr string   `json:"server_addr"`
